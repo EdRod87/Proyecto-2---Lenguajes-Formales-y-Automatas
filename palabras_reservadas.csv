@@ -1,0 +1,4 @@
+lexema,token
+int,TK_RES_INT
+if,TK_RES_IF
+while,TK_RES_WHILE

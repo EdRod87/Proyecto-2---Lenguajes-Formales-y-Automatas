@@ -1,0 +1,52 @@
+grupo,cadena,resultado_esperado
+TK_IDENTIFICADOR,a,TK_IDENTIFICADOR
+TK_IDENTIFICADOR,_x,TK_IDENTIFICADOR
+TK_IDENTIFICADOR,abc_12,TK_IDENTIFICADOR
+TK_IDENTIFICADOR,A1,TK_IDENTIFICADOR
+TK_IDENTIFICADOR,__,TK_IDENTIFICADOR
+TK_IDENTIFICADOR,1a,RECHAZADA (no es un solo token)
+TK_IDENTIFICADOR,a-b,RECHAZADA (no es un solo token)
+TK_IDENTIFICADOR,a b,RECHAZADA (no es un solo token)
+TK_NUMERO_ENTERO / DECIMAL,7,TK_NUMERO_ENTERO
+TK_NUMERO_ENTERO / DECIMAL,42,TK_NUMERO_ENTERO
+TK_NUMERO_ENTERO / DECIMAL,007,TK_NUMERO_ENTERO
+TK_NUMERO_ENTERO / DECIMAL,3.14,TK_NUMERO_DECIMAL
+TK_NUMERO_ENTERO / DECIMAL,0.5,TK_NUMERO_DECIMAL
+TK_NUMERO_ENTERO / DECIMAL,3.,RECHAZADA (no es un solo token)
+TK_NUMERO_ENTERO / DECIMAL,.5,RECHAZADA (no es un solo token)
+TK_NUMERO_ENTERO / DECIMAL,3.1.2,RECHAZADA (no es un solo token)
+Operadores,+,TK_OP_SUMA
+Operadores,-,TK_OP_RESTA
+Operadores,=,TK_OP_ASIGNACION
+Operadores,==,TK_OP_IGUALDAD
+Operadores,<,TK_OP_MENOR
+Operadores,===,RECHAZADA (no es un solo token)
+Operadores,<=,RECHAZADA (no es un solo token)
+Operadores,=<,RECHAZADA (no es un solo token)
+Operadores,++,RECHAZADA (no es un solo token)
+Simbolos,{,TK_LLAVE_ABRE
+Simbolos,},TK_LLAVE_CIERRA
+Simbolos,(,TK_PARENTESIS_A
+Simbolos,),TK_PARENTESIS_C
+Simbolos,;,TK_PUNTO_COMA
+Simbolos,{},RECHAZADA (no es un solo token)
+Simbolos,;;,RECHAZADA (no es un solo token)
+TK_COMENTARIO,//,TK_COMENTARIO (se descarta)
+TK_COMENTARIO,//hola,TK_COMENTARIO (se descarta)
+TK_COMENTARIO,// a = 1;,TK_COMENTARIO (se descarta)
+TK_COMENTARIO,///,TK_COMENTARIO (se descarta)
+TK_COMENTARIO,/,RECHAZADA (no es un solo token)
+TK_COMENTARIO,/a,RECHAZADA (no es un solo token)
+TK_ESPACIO, ,TK_ESPACIO (se descarta)
+TK_ESPACIO,   ,TK_ESPACIO (se descarta)
+TK_ESPACIO,\t,TK_ESPACIO (se descarta)
+TK_ESPACIO, \t ,TK_ESPACIO (se descarta)
+Palabras reservadas,int,TK_RES_INT
+Palabras reservadas,if,TK_RES_IF
+Palabras reservadas,while,TK_RES_WHILE
+Identificador (no reservada),in,TK_IDENTIFICADOR
+Identificador (no reservada),whil,TK_IDENTIFICADOR
+Identificador (no reservada),integer,TK_IDENTIFICADOR
+Identificador (no reservada),intx,TK_IDENTIFICADOR
+Identificador (no reservada),If,TK_IDENTIFICADOR
+Identificador (no reservada),While,TK_IDENTIFICADOR

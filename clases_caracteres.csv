@@ -1,0 +1,18 @@
+clase,caracteres
+LETRA,"a-z, A-Z"
+DIGITO,0-9
+GUION_BAJO,_
+PUNTO,.
+MAS,+
+MENOS,-
+IGUAL,=
+MENOR,<
+LLAVE_A,{
+LLAVE_C,}
+PAREN_A,(
+PAREN_C,)
+PUNTO_COMA,;
+BARRA,/
+ESPACIO,espacio y tabulador
+SALTO_LINEA,\n (clase propia: termina el comentario)
+OTRO,cualquier otro caracter

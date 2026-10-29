@@ -1,0 +1,4 @@
+int a = 5 @ 3;
+int b = 2 / 4;
+x = $y;
+while (a < b) { a = a + 1 }

@@ -1,0 +1,5 @@
+// solo comentario
+int a; // al final de linea
+// otro // con barras //
+//
+x = 1;
