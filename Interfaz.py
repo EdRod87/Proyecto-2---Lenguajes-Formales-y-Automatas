@@ -9,247 +9,8 @@ except ImportError:
     programa = None
 
 
-# ==============================================================================
-# MÓDULO PARTE 2: Autómata de Pila (PDA), Construcción de AST y Evaluación
-# ==============================================================================
-
-class Pila:
-    """Estructura de Pila (LIFO) explícita para el Autómata de Pila (PDA)."""
-    def __init__(self):
-        self._items = []
-
-    def apilar(self, item):
-        self._items.append(item)
-
-    def desapilar(self):
-        if self.esta_vacia():
-            raise IndexError("Pila vacía")
-        return self._items.pop()
-
-    def cima(self):
-        return None if self.esta_vacia() else self._items[-1]
-
-    def esta_vacia(self) -> bool:
-        return len(self._items) == 0
-
-
-class NodoAST:
-    """Nodo del Árbol de Sintaxis Abstracta (AST)."""
-    def __init__(self, valor, izquierdo=None, derecho=None):
-        self.valor = valor
-        self.izquierdo = izquierdo
-        self.derecho = derecho
-
-    def es_hoja(self) -> bool:
-        return self.izquierdo is None and self.derecho is None
-
-
-class AnalizadorParte2:
-    """Motor de la calculadora: Tokenizador, PDA, Constructor AST y Evaluador."""
-    PRECEDENCIA = {'+': 1, '-': 1, '*': 2, '/': 2, '^': 3}
-    ASOCIATIVIDAD_DER = {'^'}
-    NOMBRES_TOKENS = {
-        '+': 'TK_SUMA',
-        '-': 'TK_RESTA',
-        '*': 'TK_MULT',
-        '/': 'TK_DIV',
-        '^': 'TK_POTENCIA',
-        '(': 'TK_PAR_IZQ',
-        ')': 'TK_PAR_DER'
-    }
-
-    @classmethod
-    def tokenizar(cls, cadena: str) -> list:
-        """Extrae tokens con su posición para mostrarlos en la tabla DATA_STREAM."""
-        tokens = []
-        i = 0
-        n = len(cadena)
-        linea = 1
-        col_inicio_linea = 0
-
-        while i < n:
-            char = cadena[i]
-            if char == '\n':
-                linea += 1
-                col_inicio_linea = i + 1
-                i += 1
-                continue
-            if char.isspace():
-                i += 1
-                continue
-
-            columna = (i - col_inicio_linea) + 1
-
-            if char in cls.NOMBRES_TOKENS:
-                tokens.append({
-                    'linea': linea,
-                    'columna': columna,
-                    'token': cls.NOMBRES_TOKENS[char],
-                    'lexema': char
-                })
-                i += 1
-            elif char.isdigit() or char == '.':
-                inicio = i
-                puntos = 0
-                while i < n and (cadena[i].isdigit() or cadena[i] == '.'):
-                    if cadena[i] == '.':
-                        puntos += 1
-                        if puntos > 1:
-                            raise ValueError(f"Línea {linea}:{columna} -> Número decimal inválido '{cadena[inicio:i+1]}'")
-                    i += 1
-                lexema = cadena[inicio:i]
-                if lexema == '.':
-                    raise ValueError(f"Línea {linea}:{columna} -> Punto decimal aislado '.'")
-                tokens.append({
-                    'linea': linea,
-                    'columna': columna,
-                    'token': 'TK_NUMERO',
-                    'lexema': lexema
-                })
-            else:
-                raise ValueError(f"Línea {linea}:{columna} -> Carácter no válido '{char}'")
-
-        return tokens
-
-    @classmethod
-    def validar_pda(cls, tokens: list):
-        """
-        Valida el balanceo de paréntesis usando una Pila LIFO explícita
-        y verifica la secuencia gramatical (GLC) para detectar operadores mal ubicados.
-        """
-        if not tokens:
-            raise SyntaxError("La expresión aritmética está vacía.")
-
-        pila_parentesis = Pila()
-        # Estados de transición basados en la GLC:
-        # ESPERA_OPERANDO: al inicio, tras '(' o tras un operador (+, -, *, /, ^)
-        # ESPERA_OPERADOR: tras un número o tras ')'
-        estado = "ESPERA_OPERANDO"
-
-        for t in tokens:
-            lex = t['lexema']
-            pos = f"{t['linea']}:{t['columna']}"
-
-            if lex == '(':
-                if estado != "ESPERA_OPERANDO":
-                    raise SyntaxError(f"Pos {pos} -> Se esperaba un operador antes de '('.")
-                pila_parentesis.apilar(t)
-            elif lex == ')':
-                if estado == "ESPERA_OPERANDO":
-                    raise SyntaxError(f"Pos {pos} -> Paréntesis de cierre ')' inesperado o vacío.")
-                if pila_parentesis.esta_vacia():
-                    raise SyntaxError(f"Pos {pos} -> Paréntesis desbalanceados: ')' sin '(' de apertura.")
-                pila_parentesis.desapilar()
-                estado = "ESPERA_OPERADOR"
-            elif lex in cls.PRECEDENCIA:
-                if estado != "ESPERA_OPERADOR":
-                    raise SyntaxError(f"Pos {pos} -> Operador mal ubicado '{lex}'.")
-                estado = "ESPERA_OPERANDO"
-            else:  # Es un número
-                if estado != "ESPERA_OPERANDO":
-                    raise SyntaxError(f"Pos {pos} -> Falta un operador antes del número '{lex}'.")
-                estado = "ESPERA_OPERADOR"
-
-        if not pila_parentesis.esta_vacia():
-            abierto = pila_parentesis.cima()
-            raise SyntaxError(
-                f"Pos {abierto['linea']}:{abierto['columna']} -> Paréntesis desbalanceados: '(' sin cerrar."
-            )
-
-        if estado == "ESPERA_OPERANDO":
-            ultimo = tokens[-1]
-            raise SyntaxError(
-                f"Pos {ultimo['linea']}:{ultimo['columna']} -> La expresión no puede terminar en '{ultimo['lexema']}'."
-            )
-
-    @classmethod
-    def construir_ast(cls, tokens: list) -> NodoAST:
-        """Construye el AST respetando precedencia y asociatividad de la GLC."""
-        pila_ops = Pila()
-        pila_nodos = Pila()
-
-        def reducir():
-            op = pila_ops.desapilar()
-            der = pila_nodos.desapilar()
-            izq = pila_nodos.desapilar()
-            pila_nodos.apilar(NodoAST(op, izq, der))
-
-        for t in tokens:
-            lex = t['lexema']
-            if t['token'] == 'TK_NUMERO':
-                valor = float(lex) if '.' in lex else int(lex)
-                pila_nodos.apilar(NodoAST(valor))
-            elif lex == '(':
-                pila_ops.apilar(lex)
-            elif lex == ')':
-                while not pila_ops.esta_vacia() and pila_ops.cima() != '(':
-                    reducir()
-                pila_ops.desapilar()  # Quita '('
-            elif lex in cls.PRECEDENCIA:
-                while (not pila_ops.esta_vacia() and pila_ops.cima() != '(' and
-                       (cls.PRECEDENCIA[pila_ops.cima()] > cls.PRECEDENCIA[lex] or
-                        (cls.PRECEDENCIA[pila_ops.cima()] == cls.PRECEDENCIA[lex] and
-                         lex not in cls.ASOCIATIVIDAD_DER))):
-                    reducir()
-                pila_ops.apilar(lex)
-
-        while not pila_ops.esta_vacia():
-            reducir()
-
-        return pila_nodos.desapilar()
-
-    @classmethod
-    def dibujar_ast(cls, nodo: NodoAST, prefijo: str = "", es_ultimo: bool = True, es_raiz: bool = True) -> str:
-        """Genera la representación jerárquica ASCII del AST."""
-        if nodo is None:
-            return ""
-        if es_raiz:
-            linea = f" [RAÍZ] ──► {nodo.valor}\n"
-            nuevo_prefijo = "   "
-        else:
-            conector = "└── " if es_ultimo else "├── "
-            linea = f"{prefijo}{conector}{nodo.valor}\n"
-            nuevo_prefijo = prefijo + ("    " if es_ultimo else "│   ")
-
-        if not nodo.es_hoja():
-            linea += cls.dibujar_ast(nodo.izquierdo, nuevo_prefijo, False, False)
-            linea += cls.dibujar_ast(nodo.derecho, nuevo_prefijo, True, False)
-        return linea
-
-    @classmethod
-    def recorrido_postorden(cls, nodo: NodoAST, lista=None) -> list:
-        """Obtiene la lista de elementos en postorden (Izquierda, Derecha, Raíz)."""
-        if lista is None:
-            lista = []
-        if nodo is not None:
-            cls.recorrido_postorden(nodo.izquierdo, lista)
-            cls.recorrido_postorden(nodo.derecho, lista)
-            lista.append(str(nodo.valor))
-        return lista
-
-    @classmethod
-    def evaluar_ast(cls, nodo: NodoAST) -> float:
-        """Evalúa el AST mediante recorrido en postorden (bottom-up)."""
-        if nodo.es_hoja():
-            return nodo.valor
-
-        izq = cls.evaluar_ast(nodo.izquierdo)
-        der = cls.evaluar_ast(nodo.derecho)
-
-        op = nodo.valor
-        if op == '+':
-            return izq + der
-        elif op == '-':
-            return izq - der
-        elif op == '*':
-            return izq * der
-        elif op == '/':
-            if der == 0:
-                raise ZeroDivisionError("División entre cero detectada durante la evaluación.")
-            return izq / der
-        elif op == '^':
-            return izq ** der
-        raise ValueError(f"Operador desconocido: {op}")
+# Parte 2: Autómata de Pila (PDA), construcción del AST y evaluación
+from calculadora import AnalizadorParte2
 
 
 # ==============================================================================
@@ -380,7 +141,7 @@ class LexerApp:
 
         self.txt_ast = tk.Text(
             frame_ast, bg=self.color_bg, fg=self.color_texto_verde, font=self.fuente_consola,
-            width=38, highlightbackground=self.color_texto_amarillo, highlightthickness=1, state="disabled"
+            width=38, wrap="word", highlightbackground=self.color_texto_amarillo, highlightthickness=1, state="disabled"
         )
         self.txt_ast.pack(fill="both", expand=True)
 
@@ -518,7 +279,7 @@ class LexerApp:
             self.log_kernel(f"ETAPA A: {len(tokens)} TOKENS EXTRAÍDOS CORRECTAMENTE.")
 
             # Etapa A.2: Validación Sintáctica y Balanceo con Pila (PDA)
-            AnalizadorParte2.validar_pda(tokens)
+            traza_pda = AnalizadorParte2.validar_pda(tokens)
             self.lbl_estado_pda.config(text="PDA PILA: BALANCEADO [OK]", fg=self.color_texto_verde)
             self.log_kernel("ETAPA A (PDA): PARÉNTESIS BALANCEADOS Y SINTAXIS VÁLIDA.")
 
@@ -529,11 +290,16 @@ class LexerApp:
             # Etapa C: Visualización del AST y Recorrido Postorden
             dibujo_arbol = AnalizadorParte2.dibujar_ast(raiz_ast)
             postorden = " ".join(AnalizadorParte2.recorrido_postorden(raiz_ast))
+            texto_traza = "\n".join(
+                f" {estado}  lee {simbolo:<3} pila: {pila}" for estado, simbolo, pila in traza_pda
+            )
             texto_visor = (
                 "=== ESTRUCTURA JERÁRQUICA AST ===\n\n"
                 f"{dibujo_arbol}\n"
                 "=== RECORRIDO POSTORDEN (RPN) ===\n"
-                f"{postorden}\n"
+                f"{postorden}\n\n"
+                "=== TRAZA DEL AUTÓMATA DE PILA ===\n"
+                f"{texto_traza}\n"
             )
             self.mostrar_en_visor_ast(texto_visor)
             self.log_kernel("ETAPA C: AST RENDERIZADO EN EL VISOR.")
